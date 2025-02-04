@@ -7,6 +7,8 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const http_1 = require("http");
+const WebSocketService_1 = require("./services/WebSocketService");
 const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
 const tenants_routes_1 = __importDefault(require("./routes/tenants.routes"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
@@ -221,7 +223,9 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: "Internal server error" });
 });
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+const port = process.env.PORT || 3000;
+const httpServer = (0, http_1.createServer)(app);
+new WebSocketService_1.WebSocketService(httpServer);
+httpServer.listen(port, () => {
+    console.log(`🚀 Server is running on port ${port}`);
 });

@@ -179,4 +179,70 @@ export class AuthService {
       throw new Error("Token inválido");
     }
   }
+
+  async getCurrentUser(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tenantId: true,
+        tenant: {
+          select: {
+            name: true,
+            plan: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return user;
+  }
+
+  async generateApiKey(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { tenant: true },
+    });
+
+    if (!user?.tenant) {
+      throw new Error("Tenant not found");
+    }
+
+    const apiKey = `kb_${Buffer.from(Math.random().toString())
+      .toString("base64")
+      .slice(0, 32)}`;
+
+    await prisma.tenant.update({
+      where: { id: user.tenant.id },
+      data: { apiKey },
+    });
+
+    return apiKey;
+  }
+
+  async revokeApiKey(id: string) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id },
+    });
+
+    if (!tenant) {
+      throw new Error("Tenant not found");
+    }
+
+    const newApiKey = `kb_${Buffer.from(Math.random().toString())
+      .toString("base64")
+      .slice(0, 32)}`;
+
+    await prisma.tenant.update({
+      where: { id },
+      data: { apiKey: newApiKey },
+    });
+  }
 }

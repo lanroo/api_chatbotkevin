@@ -9,19 +9,23 @@ datasource db {
 
 // Tenant (Cliente)
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  plan      String   @default("starter")
-  apiKey    String   @unique
-  config    Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String      @id @default(uuid())
+  name          String
+  plan          String      @default("starter")
+  apiKey        String      @unique
+  status        String      @default("active") // active, suspended, deleted
+  config        Json        @default("{ \"theme\": { \"primaryColor\": \"#007bff\", \"secondaryColor\": \"#6c757d\", \"fontFamily\": \"Inter\" }, \"chatbot\": { \"name\": \"Assistant\", \"welcomeMessage\": \"Hello! How can I help you today?\", \"systemPrompt\": \"You are a helpful assistant\", \"temperature\": 0.7, \"maxTokens\": 2000 }, \"limits\": { \"maxMessagesPerDay\": 1000, \"maxTokensPerMonth\": 100000, \"maxConcurrentChats\": 5 } }")
+  usageMetrics  Json?      @default("{ \"messagesCount\": 0, \"tokensUsed\": 0, \"activeChats\": 0, \"avgResponseTime\": 0 }")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  lastActivityAt DateTime   @default(now())
 
   // Relacionamentos
-  users     User[]
-  messages  Message[]
-  analytics Analytics[]
-  chatMessages ChatMessage[]
+  users         User[]
+  messages      Message[]
+  analytics     Analytics[]
+  chatMessages  ChatMessage[]
+  usageLogs     UsageLog[]
 
   @@map("tenants")
 }
@@ -39,6 +43,7 @@ model User {
   mfaSecret String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  messages  ChatMessage[]
 
   @@index([tenantId])
 
@@ -77,17 +82,35 @@ model Analytics {
 }
 
 model ChatMessage {
-  id           String   @id @default(uuid())
-  role         String   // 'user' or 'assistant'
-  content      String   @db.Text
-  type         String   @default("text")
+  id           String    @id @default(uuid())
+  content      String
+  role         String
+  type         String    @default("text")
+  createdAt    DateTime  @default(now())
   tenantId     String
-  createdAt    DateTime @default(now())
-  responseTime Int?     // tempo de resposta em ms
-  satisfaction Int?     // avaliação do usuário (1-5)
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  userId       String
+  responseTime Int?
+  satisfaction Int?
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
-  @@index([createdAt])
+  @@index([userId])
   @@map("chat_messages")
+}
+
+// Novo modelo para logs de uso detalhados
+model UsageLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  eventType   String   // message_sent, token_used, chat_started, etc
+  value       Float
+  metadata    Json?
+  timestamp   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([timestamp])
+  @@index([eventType])
+  @@map("usage_logs")
 } 

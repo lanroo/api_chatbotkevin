@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { AuthService } from "../services/AuthService";
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,12 @@ const apiKeySchema = z.object({
 });
 
 export class AuthController {
+  private authService: AuthService;
+
+  constructor() {
+    this.authService = new AuthService();
+  }
+
   // Register new user
   async register(req: Request, res: Response) {
     try {
@@ -83,87 +90,22 @@ export class AuthController {
   // Login user
   async login(req: Request, res: Response) {
     try {
-      const validatedData = loginSchema.parse(req.body);
-
-      // Find user
-      const user = await prisma.user.findUnique({
-        where: { email: validatedData.email },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          password: true,
-          role: true,
-          tenantId: true,
-        },
-      });
-
-      if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      // Verify password
-      const validPassword = await bcrypt.compare(
-        validatedData.password,
-        user.password
-      );
-
-      if (!validPassword) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || "default_secret",
-        { expiresIn: "24h" }
-      );
-
-      // Remove password from response
-      const { password: _, ...userData } = user;
-
-      return res.json({
-        user: userData,
-        token,
-      });
+      const { email, password } = req.body;
+      const result = await this.authService.login(email, password);
+      res.status(200).json(result);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error logging in:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      res.status(400).json({ error: error.message });
     }
   }
 
   // Generate new API key
   async generateApiKey(req: Request, res: Response) {
     try {
-      const validatedData = apiKeySchema.parse(req.body);
-      const tenantId = req.tenant.id;
-
-      // Generate new API key
-      const apiKey = `kb_${Buffer.from(Math.random().toString())
-        .toString("base64")
-        .slice(0, 32)}`;
-
-      // Update tenant with new API key
-      const tenant = await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          apiKey,
-        },
-      });
-
-      return res.json({
-        apiKey,
-        message: "New API key generated successfully",
-      });
+      const userId = req.user.id;
+      const apiKey = await this.authService.generateApiKey(userId);
+      res.status(201).json({ apiKey });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error generating API key:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      res.status(400).json({ error: error.message });
     }
   }
 
@@ -171,70 +113,32 @@ export class AuthController {
   async revokeApiKey(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const tenantId = req.tenant.id;
-
-      // Verify tenant ownership
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-      });
-
-      if (!tenant) {
-        return res.status(404).json({ error: "Tenant not found" });
-      }
-
-      // Generate new API key (effectively revoking the old one)
-      const newApiKey = `kb_${Buffer.from(Math.random().toString())
-        .toString("base64")
-        .slice(0, 32)}`;
-
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          apiKey: newApiKey,
-        },
-      });
-
-      return res.json({
-        message: "API key revoked successfully",
-      });
+      await this.authService.revokeApiKey(id);
+      res.status(204).send();
     } catch (error) {
-      console.error("Error revoking API key:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      res.status(400).json({ error: error.message });
     }
   }
 
   // Get current user
   async getCurrentUser(req: Request, res: Response) {
     try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          tenantId: true,
-          tenant: {
-            select: {
-              name: true,
-              plan: true,
-            },
-          },
-        },
-      });
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      return res.json(user);
+      const userId = req.user.id;
+      const user = await this.authService.getCurrentUser(userId);
+      res.status(200).json(user);
     } catch (error) {
-      console.error("Error fetching current user:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      res.status(404).json({ error: error.message });
+    }
+  }
+
+  // Enable 2FA
+  async enable2FA(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const result = await this.authService.enable2FA(userId);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

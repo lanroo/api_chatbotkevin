@@ -1,65 +1,61 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChatService = exports.messageQueue = void 0;
-const bullmq_1 = require("bullmq");
-const redis_1 = require("../../../config/redis");
+exports.ChatService = void 0;
 const client_1 = require("@prisma/client");
-const openai_1 = require("../../../config/openai");
+const redis_1 = require("../config/redis");
+const openai_1 = require("../config/openai");
+const TenantService_1 = require("./TenantService");
 const prisma = new client_1.PrismaClient();
-exports.messageQueue = new bullmq_1.Queue("message-processing", {
-    connection: redis_1.redis,
-});
-const queueEvents = new bullmq_1.QueueEvents("message-processing", {
-    connection: redis_1.redis,
-});
-const messageWorker = new bullmq_1.Worker("message-processing", async (job) => {
-    var _a, _b;
-    const { message, tenantId, userId } = job.data;
-    try {
+const tenantService = new TenantService_1.TenantService();
+class ChatService {
+    async sendMessage(message, tenantId, userId) {
+        var _a, _b;
+        const startTime = Date.now();
+        const cachedResponse = await redis_1.redis.get(`chat:response:${tenantId}:${message}`);
+        if (cachedResponse) {
+            await tenantService.logUsage(tenantId, "message_sent", 1, {
+                fromCache: true,
+                responseTime: Date.now() - startTime,
+            });
+            return { content: cachedResponse, fromCache: true };
+        }
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+        });
+        if (!tenant)
+            throw new Error("Tenant not found");
+        const config = tenant.config;
         const completion = await openai_1.openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            messages: [{ role: "user", content: message }],
+            messages: [
+                {
+                    role: "system",
+                    content: config.chatbot.systemPrompt,
+                },
+                { role: "user", content: message },
+            ],
+            temperature: config.chatbot.temperature,
+            max_tokens: config.chatbot.maxTokens,
         });
         const response = ((_b = (_a = completion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) || "";
+        const responseTime = Date.now() - startTime;
         await prisma.chatMessage.create({
             data: {
                 content: response,
                 role: "assistant",
-                tenantId: tenantId,
-                userId: userId,
+                tenantId,
+                userId,
                 type: "text",
-                responseTime: Date.now() - job.timestamp,
+                responseTime,
             },
         });
+        await Promise.all([
+            tenantService.logUsage(tenantId, "message_sent", 1),
+            tenantService.logUsage(tenantId, "tokens_used", this.countTokens(message + response)),
+            tenantService.logUsage(tenantId, "response_time", responseTime),
+        ]);
         await redis_1.redis.setex(`chat:response:${tenantId}:${message}`, 3600, response);
-        return response;
-    }
-    catch (error) {
-        console.error("Erro ao processar mensagem:", error);
-        throw error;
-    }
-}, { connection: redis_1.redis });
-messageWorker.on("completed", (job) => {
-    console.log(`Job ${job.id} completed successfully`);
-});
-messageWorker.on("failed", (job, error) => {
-    console.error(`Job ${job === null || job === void 0 ? void 0 : job.id} failed:`, error);
-});
-class ChatService {
-    async sendMessage(message, tenantId, userId) {
-        const cachedResponse = await redis_1.redis.get(`chat:response:${tenantId}:${message}`);
-        if (cachedResponse) {
-            return { content: cachedResponse, fromCache: true };
-        }
-        const job = await exports.messageQueue.add("process-message", { message, tenantId, userId }, {
-            attempts: 3,
-            backoff: {
-                type: "exponential",
-                delay: 1000,
-            },
-        });
-        const result = await job.waitUntilFinished(queueEvents);
-        return { content: result, fromCache: false };
+        return { content: response, fromCache: false };
     }
     async getHistory(tenantId, limit = 50) {
         const cacheKey = `chat:history:${tenantId}:${limit}`;
@@ -79,25 +75,32 @@ class ChatService {
         var _a, _b;
         const message = await prisma.chatMessage.findUnique({
             where: { id: messageId },
+            include: { tenant: true },
         });
         if (!message)
-            throw new Error("Mensagem não encontrada");
+            throw new Error("Message not found");
+        const config = message.tenant.config;
         const completion = await openai_1.openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
                 {
                     role: "system",
-                    content: "Analise o sentimento da mensagem e retorne um valor de 1 a 5",
+                    content: "Analyze the sentiment and return a value from 1 to 5",
                 },
                 { role: "user", content: message.content },
             ],
+            temperature: config.chatbot.temperature,
         });
         const sentiment = parseInt(((_b = (_a = completion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) || "3");
         await prisma.chatMessage.update({
             where: { id: messageId },
             data: { satisfaction: sentiment },
         });
+        await tenantService.logUsage(message.tenantId, "sentiment_analysis", 1);
         return sentiment;
+    }
+    countTokens(text) {
+        return Math.ceil(text.length / 4);
     }
 }
 exports.ChatService = ChatService;

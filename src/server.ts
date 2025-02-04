@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import { createServer } from "http";
+import { WebSocketService } from "./services/WebSocketService";
 
 import chatRouter from "./routes/chat.routes";
 import tenantsRouter from "./routes/tenants.routes";
@@ -236,8 +238,12 @@ app.use(
   }
 );
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+const port = process.env.PORT || 3000;
+const httpServer = createServer(app);
+
+// Inicializar WebSocket
+new WebSocketService(httpServer);
+
+httpServer.listen(port, () => {
+  console.log(`🚀 Server is running on port ${port}`);
 });

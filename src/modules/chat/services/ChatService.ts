@@ -35,7 +35,8 @@ const messageWorker = new Worker(
         data: {
           content: response,
           role: "assistant",
-          tenantId,
+          tenantId: tenantId as string,
+          userId: userId,
           type: "text",
           responseTime: Date.now() - job.timestamp,
         },

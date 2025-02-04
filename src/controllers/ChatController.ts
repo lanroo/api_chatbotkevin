@@ -50,6 +50,8 @@ export class ChatController {
               role: "user",
               content: validatedData.content,
               tenantId,
+              userId: req.user.id,
+              type: "text",
             },
           }),
           prisma.chatMessage.create({
@@ -57,6 +59,8 @@ export class ChatController {
               role: "assistant",
               content: aiResponse,
               tenantId,
+              userId: req.user.id,
+              type: "text",
             },
           }),
         ]);
@@ -203,6 +207,8 @@ export class ChatController {
             role: "user",
             content,
             tenantId: req.tenant.id,
+            userId: req.user.id,
+            type: "text",
           },
         }),
         prisma.chatMessage.create({
@@ -210,6 +216,8 @@ export class ChatController {
             role: "assistant",
             content: aiResponse,
             tenantId: req.tenant.id,
+            userId: req.user.id,
+            type: "text",
           },
         }),
       ]);

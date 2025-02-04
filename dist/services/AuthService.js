@@ -117,5 +117,59 @@ class AuthService {
             throw new Error("Token inválido");
         }
     }
+    async getCurrentUser(userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                tenantId: true,
+                tenant: {
+                    select: {
+                        name: true,
+                        plan: true,
+                    },
+                },
+            },
+        });
+        if (!user) {
+            throw new Error("User not found");
+        }
+        return user;
+    }
+    async generateApiKey(userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { tenant: true },
+        });
+        if (!(user === null || user === void 0 ? void 0 : user.tenant)) {
+            throw new Error("Tenant not found");
+        }
+        const apiKey = `kb_${Buffer.from(Math.random().toString())
+            .toString("base64")
+            .slice(0, 32)}`;
+        await prisma.tenant.update({
+            where: { id: user.tenant.id },
+            data: { apiKey },
+        });
+        return apiKey;
+    }
+    async revokeApiKey(id) {
+        const tenant = await prisma.tenant.findUnique({
+            where: { id },
+        });
+        if (!tenant) {
+            throw new Error("Tenant not found");
+        }
+        const newApiKey = `kb_${Buffer.from(Math.random().toString())
+            .toString("base64")
+            .slice(0, 32)}`;
+        await prisma.tenant.update({
+            where: { id },
+            data: { apiKey: newApiKey },
+        });
+    }
 }
 exports.AuthService = AuthService;
