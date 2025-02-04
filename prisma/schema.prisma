@@ -77,15 +77,15 @@ model Analytics {
 }
 
 model ChatMessage {
-  id        String   @id @default(uuid())
-  role      String   // 'user' or 'assistant'
-  content   String   @db.Text
-  type      String   @default("text") // text, image, button, etc
-  tenantId  String
-  createdAt DateTime @default(now())
-  responseTime Int?  // tempo de resposta em ms
-  satisfaction Int?  // avaliação do usuário (1-5)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  id           String   @id @default(uuid())
+  role         String   // 'user' or 'assistant'
+  content      String   @db.Text
+  type         String   @default("text")
+  tenantId     String
+  createdAt    DateTime @default(now())
+  responseTime Int?     // tempo de resposta em ms
+  satisfaction Int?     // avaliação do usuário (1-5)
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([createdAt])
