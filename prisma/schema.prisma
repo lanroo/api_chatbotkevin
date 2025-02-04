@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant (Cliente)
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  plan      String   @default("starter")
+  apiKey    String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  users     User[]
+  messages  Message[]
+  analytics Analytics[]
+
+  @@map("tenants")
+}
+
+// Usuário
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  tenantId  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("users")
+}
+
+// Mensagem
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  type        String   @default("text")
+  sender      String
+  tenantId    String
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("messages")
+}
+
+// Analytics
+model Analytics {
+  id          String   @id @default(uuid())
+  tenantId    String
+  metric      String
+  value       Float
+  timestamp   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("analytics")
+} 
