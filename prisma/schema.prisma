@@ -21,6 +21,7 @@ model Tenant {
   users     User[]
   messages  Message[]
   analytics Analytics[]
+  chatMessages ChatMessage[]
 
   @@map("tenants")
 }
@@ -29,13 +30,17 @@ model Tenant {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
+  password  String
   name      String
   tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   role      String   @default("user")
+  mfaEnabled Boolean @default(false)
+  mfaSecret String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
 
   @@map("users")
 }
@@ -58,11 +63,31 @@ model Message {
 model Analytics {
   id          String   @id @default(uuid())
   tenantId    String
-  metric      String
+  metric      String   // tokens_used, response_time, satisfaction, etc
   value       Float
   timestamp   DateTime @default(now())
+  metadata    Json?    // dados adicionais específicos da métrica
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
+  @@index([timestamp])
+  @@index([metric])
   @@map("analytics")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  role      String   // 'user' or 'assistant'
+  content   String   @db.Text
+  type      String   @default("text") // text, image, button, etc
+  tenantId  String
+  createdAt DateTime @default(now())
+  responseTime Int?  // tempo de resposta em ms
+  satisfaction Int?  // avaliação do usuário (1-5)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("chat_messages")
 } 

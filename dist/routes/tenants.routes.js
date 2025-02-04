@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const TenantsController_1 = require("../controllers/TenantsController");
+const auth_1 = require("../middleware/auth");
+const tenantsRouter = (0, express_1.Router)();
+const tenantsController = new TenantsController_1.TenantsController();
+tenantsRouter.use(auth_1.authMiddleware);
+tenantsRouter.post("/", tenantsController.create);
+tenantsRouter.get("/:id", tenantsController.get);
+tenantsRouter.put("/:id", tenantsController.update);
+tenantsRouter.delete("/:id", tenantsController.delete);
+tenantsRouter.get("/:id/usage", tenantsController.getUsage);
+exports.default = tenantsRouter;

@@ -1,174 +1,178 @@
 # Kevin Bot API 🤖
 
-API REST para o sistema Kevin Bot, fornecendo endpoints para gerenciamento de chatbots, multi-tenancy e analytics.
+A multi-tenant chatbot API powered by Gemini AI and OpenRouter, with built-in analytics and usage tracking.
 
-## 🎯 Objetivos
+## Features
 
-- Criar uma API que permita gerenciar múltiplos chatbots para diferentes clientes
-- Fornecer sistema de multi-tenancy para isolamento de dados
-- Implementar sistema de cobrança e planos
-- Facilitar a integração do chatbot em diferentes plataformas
+- 🤖 Advanced AI chat capabilities using Gemini AI (with OpenRouter fallback)
+- 👥 Multi-tenant architecture for managing multiple clients
+- 📊 Built-in analytics and usage tracking
+- 💰 Usage-based billing system
+- 🔒 Secure authentication and API key management
+- ⚡ Rate limiting and quota management
 
-## 🏗️ Estrutura do Projeto
+## Tech Stack
 
-```
-src/
-├── controllers/     # Controladores da API
-├── services/       # Lógica de negócios
-├── models/         # Tipos e interfaces
-├── middleware/     # Middlewares (auth, rate limit)
-├── routes/         # Rotas da API
-├── config/         # Configurações
-└── utils/          # Utilitários
-```
+- **Runtime**: Node.js
+- **Framework**: Express
+- **Language**: TypeScript
+- **ORM**: Prisma
+- **Database**: PostgreSQL (via Supabase)
+- **AI Providers**:
+  - Gemini AI (Primary)
+  - OpenRouter (Fallback)
+- **Authentication**: JWT + API Keys
+- **Documentation**: OpenAPI/Swagger
 
-## 🚀 Endpoints Principais
+## Prerequisites
 
-### Tenants
+- Node.js 18+
+- PostgreSQL
+- npm or yarn
 
-- `POST /api/v1/tenants` - Criar novo tenant
-- `GET /api/v1/tenants/:id` - Obter dados do tenant
-- `PUT /api/v1/tenants/:id` - Atualizar configurações
+## Setup
 
-### Auth
+1. Clone the repository:
 
-- `POST /api/v1/auth/register` - Registrar novo usuário
-- `POST /api/v1/auth/login` - Login
-- `POST /api/v1/auth/api-keys` - Gerar API key
+   ```bash
+   git clone https://github.com/yourusername/kevinbot-api.git
+   cd kevinbot-api
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Copy the environment variables file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Update the environment variables in `.env` with your values:
+
+   - Database connection
+   - AI provider API keys
+   - JWT secret
+   - Stripe keys
+   - Other configuration
+
+5. Initialize the database:
+
+   ```bash
+   npx prisma migrate dev
+   ```
+
+6. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## API Endpoints
 
 ### Chat
 
-- `POST /api/v1/chat/messages` - Enviar mensagem
-- `GET /api/v1/chat/history` - Obter histórico
-- `PUT /api/v1/chat/settings` - Configurar chatbot
+- `POST /api/v1/chat/messages` - Send a message to the chatbot
+- `GET /api/v1/chat/history` - Get chat history
+- `DELETE /api/v1/chat/history` - Clear chat history
+
+### Tenants
+
+- `POST /api/v1/tenants` - Create a new tenant
+- `GET /api/v1/tenants/:id` - Get tenant details
+- `PUT /api/v1/tenants/:id` - Update tenant
+- `DELETE /api/v1/tenants/:id` - Delete tenant
+
+### Authentication
+
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/api-keys` - Generate API key
+- `DELETE /api/v1/auth/api-keys/:id` - Revoke API key
 
 ### Analytics
 
-- `GET /api/v1/analytics/metrics` - Métricas gerais
-- `GET /api/v1/analytics/reports` - Relatórios detalhados
+- `GET /api/v1/analytics/metrics` - Get usage metrics
+- `GET /api/v1/analytics/usage` - Get detailed usage stats
+- `GET /api/v1/analytics/reports` - Get analytics reports
 
-## 💰 Planos e Limites
+## Authentication
 
-### Starter ($49/mês)
+The API supports two authentication methods:
 
-- 1.000 mensagens/mês
-- Chat widget básico
-- Métricas essenciais
-- 100 usuários ativos
+1. **JWT Tokens**: For dashboard/admin access
 
-### Professional ($149/mês)
+   ```
+   Authorization: Bearer <token>
+   ```
 
-- 5.000 mensagens/mês
-- Chat widget personalizado
-- Analytics completo
-- 500 usuários ativos
-- Customização avançada
+2. **API Keys**: For client applications
+   ```
+   X-API-Key: <api_key>
+   ```
 
-## 🔧 Tecnologias
+## Rate Limiting
 
-- Node.js + Express
-- TypeScript
-- Prisma (ORM)
-- Supabase (Database)
-- Stripe (Pagamentos)
-- Jest (Testes)
+- Rate limits are applied per tenant based on their plan:
+  - Starter: 1,000 messages/month
+  - Pro: 10,000 messages/month
+  - Enterprise: 100,000 messages/month
 
-## 📦 Instalação
+## Development
 
-1. Clone o repositório
+### Running Tests
 
 ```bash
-git clone https://github.com/seu-usuario/kevinbot-api.git
-cd kevinbot-api
+npm run test
 ```
 
-2. Instale as dependências
+### Linting
 
 ```bash
-npm install
+npm run lint
 ```
 
-3. Configure as variáveis de ambiente
+### Building for Production
 
 ```bash
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
+npm run build
 ```
 
-4. Execute as migrações do banco
+## Deployment
 
-```bash
-npx prisma migrate dev
-```
+1. Build the application:
 
-5. Inicie o servidor
+   ```bash
+   npm run build
+   ```
 
-```bash
-npm run dev
-```
+2. Set production environment variables
 
-## 🔄 Integração com Frontend
+3. Run database migrations:
 
-1. Instale o SDK
+   ```bash
+   npx prisma migrate deploy
+   ```
 
-```bash
-npm install @kevinbot/sdk
-```
+4. Start the server:
+   ```bash
+   npm start
+   ```
 
-2. Inicialize o widget
+## Contributing
 
-```javascript
-import { KevinBot } from "@kevinbot/sdk";
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-const bot = new KevinBot({
-  apiKey: "sua_api_key",
-  theme: "light",
-});
-```
+## License
 
-## 📝 TODO
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-### Fase 1 (Semanas 1-2)
+## Support
 
-- [ ] Estrutura básica da API
-- [ ] Sistema de autenticação
-- [ ] Multi-tenancy no Supabase
-- [ ] Endpoints de chat
-
-### Fase 2 (Semanas 3-4)
-
-- [ ] SDK JavaScript
-- [ ] Sistema de cobrança
-- [ ] Widget customizável
-- [ ] Analytics básico
-
-### Fase 3 (Semanas 5-6)
-
-- [ ] Documentação da API
-- [ ] Painel do cliente
-- [ ] Testes automatizados
-- [ ] Deploy inicial
-
-## 📚 Documentação
-
-- [Documentação da API](docs/api.md)
-- [Guia de Integração](docs/integration.md)
-- [Exemplos de Uso](docs/examples.md)
-
-## 🤝 Contribuindo
-
-1. Fork o projeto
-2. Crie sua branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
-## 🆘 Suporte
-
-- Email: suporte@kevinbot.ai
-- Discord: [discord.gg/kevinbot](https://discord.gg/kevinbot)
-- Documentação: [docs.kevinbot.ai](https://docs.kevinbot.ai)
+For support, email support@kevinbot.com or create an issue in the repository.

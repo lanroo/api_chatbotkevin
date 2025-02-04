@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { tenantsRoutes } from "./tenants.routes";
-import { authRoutes } from "./auth.routes";
-import { chatRoutes } from "./chat.routes";
-import { analyticsRoutes } from "./analytics.routes";
+import tenantsRoutes from "./tenants.routes";
+import authRoutes from "./auth.routes";
+import chatRoutes from "./chat.routes";
+import analyticsRoutes from "./analytics.routes";
 
 const routes = Router();
 
